@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Age Calculator</title>
+  <style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(135deg, #4f46e5, #06b6d4);
+  padding: 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+h1 {
+  margin: 0 0 4px;
+  color: #1e1b4b;
+}
+
+.subtitle {
+  margin: 0 0 20px;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+label {
+  display: block;
+  margin: 14px 0 6px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+input[type="date"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+input[type="date"]:focus {
+  outline: 2px solid #4f46e5;
+  border-color: transparent;
+}
+
+button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: #4338ca;
+}
+
+.error {
+  min-height: 1.2em;
+  margin: 12px 0 0;
+  color: #dc2626;
+  font-size: 0.9rem;
+}
+
+.result {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.hidden {
+  display: none;
+}
+
+.main-age {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e1b4b;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.main-age span {
+  color: #4f46e5;
+  font-size: 1.8rem;
+}
+
+.extras {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: #4b5563;
+}
+
+.extras li {
+  padding: 6px 0;
+}
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Age Calculator</h1>
+    <p class="subtitle">Enter your date of birth to see your exact age.</p>
+
+    <form id="age-form" novalidate>
+      <label for="dob">Date of birth</label>
+      <input type="date" id="dob" required />
+
+      <label for="on-date">Calculate age on (optional)</label>
+      <input type="date" id="on-date" />
+
+      <button type="submit">Calculate</button>
+    </form>
+
+    <p id="error" class="error" role="alert"></p>
+
+    <section id="result" class="result hidden" aria-live="polite">
+      <p class="main-age"><span id="years">0</span> years
+        <span id="months">0</span> months
+        <span id="days">0</span> days</p>
+
+      <ul class="extras">
+        <li>Total months: <strong id="total-months">0</strong></li>
+        <li>Total weeks: <strong id="total-weeks">0</strong></li>
+        <li>Total days: <strong id="total-days">0</strong></li>
+        <li>Next birthday in: <strong id="next-birthday">0</strong> days</li>
+      </ul>
+    </section>
+  </main>
+
+  <script>
+const form = document.getElementById("age-form");
+const dobInput = document.getElementById("dob");
+const onDateInput = document.getElementById("on-date");
+const errorEl = document.getElementById("error");
+const resultEl = document.getElementById("result");
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+// Don't allow future birth dates
+dobInput.max = toInputValue(new Date());
+
+function toInputValue(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Parse "YYYY-MM-DD" as a local date (avoids timezone shifts)
+function parseDate(value) {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function calculateAge(dob, target) {
+  let years = target.getFullYear() - dob.getFullYear();
+  let months = target.getMonth() - dob.getMonth();
+  let days = target.getDate() - dob.getDate();
+
+  if (days < 0) {
+    // Borrow days from the previous month
+    const prevMonth = (target.getMonth() + 11) % 12;
+    const prevYear = target.getMonth() === 0 ? target.getFullYear() - 1 : target.getFullYear();
+    days += daysInMonth(prevYear, prevMonth);
+    months--;
+  }
+  if (months < 0) {
+    months += 12;
+    years--;
+  }
+  return { years, months, days };
+}
+
+function daysUntilNextBirthday(dob, target) {
+  let next = new Date(target.getFullYear(), dob.getMonth(), dob.getDate());
+  if (next < target) {
+    next = new Date(target.getFullYear() + 1, dob.getMonth(), dob.getDate());
+  }
+  return Math.round((next - target) / MS_PER_DAY);
+}
+
+function showError(message) {
+  errorEl.textContent = message;
+  resultEl.classList.add("hidden");
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  errorEl.textContent = "";
+
+  if (!dobInput.value) {
+    showError("Please enter your date of birth.");
+    return;
+  }
+
+  const dob = parseDate(dobInput.value);
+  const target = onDateInput.value ? parseDate(onDateInput.value) : parseDate(toInputValue(new Date()));
+
+  if (dob > target) {
+    showError("Date of birth cannot be after the date you're calculating for.");
+    return;
+  }
+
+  const { years, months, days } = calculateAge(dob, target);
+  const totalDays = Math.round((target - dob) / MS_PER_DAY);
+
+  document.getElementById("years").textContent = years;
+  document.getElementById("months").textContent = months;
+  document.getElementById("days").textContent = days;
+  document.getElementById("total-months").textContent = (years * 12 + months).toLocaleString();
+  document.getElementById("total-weeks").textContent = Math.floor(totalDays / 7).toLocaleString();
+  document.getElementById("total-days").textContent = totalDays.toLocaleString();
+  document.getElementById("next-birthday").textContent = daysUntilNextBirthday(dob, target);
+
+  resultEl.classList.remove("hidden");
+});
+</script>
+</body>
+</html>
